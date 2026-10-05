@@ -14,4 +14,4 @@ Reusable plotting functions that answer:
 - Which seating type is most popular? (**Sit-down, ~79% of coasters**)
 
 ## Data
-`data/` — Golden Ticket Award winners (wood & steel) and the [roller coaster database](https://www.kaggle.com/datasets/) dataset.
+`data/` — Golden Ticket Award winners (wooden & steel, 2013–2018) and a worldwide roller coaster statistics dataset (provided by Codecademy).
