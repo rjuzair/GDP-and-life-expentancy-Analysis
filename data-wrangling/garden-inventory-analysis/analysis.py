@@ -1,36 +1,37 @@
-import codecademylib
+"""Petal Power - garden store inventory analysis.
+
+Uses pandas selection, boolean filtering and row-wise transformations to
+answer stock questions for a chain of garden stores.
+
+Data: data/inventory.csv (location, product_type, product_description,
+quantity, price)
+"""
+from pathlib import Path
+
 import pandas as pd
 
-#1 & 2
-inventory = pd.read_csv("inventory.csv")
-print(inventory.head(10))
+DATA = Path(__file__).parent / "data" / "inventory.csv"
 
-#3
-staten_island = inventory.iloc[:10]
-print(staten_island)
 
-#4
-product_request = staten_island.product_description
-print(product_request)
+def main():
+    inventory = pd.read_csv(DATA)
 
-#5
-seed_request = inventory.loc[(inventory.location == "Brooklyn")& (inventory.product_type == "seeds")]
-print(seed_request)
+    staten_island = inventory[inventory.location == "Staten Island"]
+    print("Staten Island products:")
+    print(staten_island.product_description.to_string(index=False), "\n")
 
-#6
-inventory["in_stock"] = inventory.quantity.apply(lambda row: True if row > 0 else False)
-print(inventory)
+    seed_request = inventory[(inventory.location == "Brooklyn") & (inventory.product_type == "seeds")]
+    print("Seeds available in Brooklyn:")
+    print(seed_request, "\n")
 
-#7
-inventory["total_value"] = inventory.price * inventory.quantity
-print(inventory)
+    inventory["in_stock"] = inventory.quantity > 0
+    inventory["total_value"] = inventory.price * inventory.quantity
+    inventory["full_description"] = inventory.product_type + " - " + inventory.product_description
 
-#8
-combine_lambda = lambda row: \
-    '{} - {}'.format(row.product_type,
-                     row.product_description)
+    print("Inventory value by location:")
+    print(inventory.groupby("location").total_value.sum().sort_values(ascending=False))
+    print(f"\nOut-of-stock products: {(~inventory.in_stock).sum()}")
 
-inventory["full_description"] = inventory.apply(combine_lambda,
-axis = 1
-)
-print(inventory)
+
+if __name__ == "__main__":
+    main()

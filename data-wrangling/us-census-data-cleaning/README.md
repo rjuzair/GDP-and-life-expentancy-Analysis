@@ -1,30 +1,16 @@
-# Cleaning-US-Census-Data
-## Tasks
+# US Census Data Cleaning
 
+Combines state-level census extracts split across many CSV files into a single tidy dataset.
 
-1.
-Import CVS files
+## Cleaning steps
+- Concatenate `states*.csv` files with `glob` + `pd.concat`
+- Strip `$` and `,` from **Income** and convert to numeric
+- Split the combined **GenderPop** column (`"2341093M_2489527F"`) into **Men** and **Women**
+- Impute missing **Women** values as `TotalPop − Men`
+- Remove duplicate state rows
+- Convert race/ethnicity percentages (`"17.5%"`) to numbers and impute gaps with the column mean
+- Visualise income vs female population and the distribution of each race/ethnicity share
 
-2.
-Turn the Income column into a format that is ready for conversion into a numerical type.
-
-3.
-Split the GenderPop column into those two new columns Men column, and the Women column.
-
-4.
-Convert both of the columns into numerical datatypes.
-
-5.
-Fill in nans in Women column.
-As an estimate for the nan values in the Women column, use the TotalPop of that state minus the Men for that state.
-See if there duplicate rows in there.
-Drop those duplicates rows
-
-6.
-Make the scatterplot.
-
-### Histograms of Races
-7.
-Try to make a histogram for each one!
-You will have to get the columns into numerical format, and those percentage signs will have to go.
-Fill inthe nan values.
+```bash
+python analysis.py   # expects data/states0.csv … data/statesN.csv
+```

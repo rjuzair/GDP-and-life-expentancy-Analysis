@@ -1,139 +1,71 @@
-import pandas as pd
-import numpy as np
+"""US Census data cleaning.
+
+Combines state-level census extracts spread across many CSV files, cleans
+messy string columns (currency, combined gender counts, percentages),
+imputes missing values, removes duplicates and visualises the result.
+
+Data: data/states*.csv
+"""
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-import codecademylib3_seaborn
-import glob
+import pandas as pd
 
-"""temp = pd.read_csv("states0.csv")
-print(temp)"""
-
-#1
-files = glob.glob("states*.csv")
-df_list = list()
-
-for file in files:
-  data = pd.read_csv(file)
-  df_list.append(data)
-
-us_census = pd.concat(df_list)
-print(us_census)
-#print(us_census.dtypes)
-
-#2
-us_census.Income = pd.to_numeric(
-  us_census.Income.replace(
-    '[\$,]',
-    '',
-    regex = True
-    ))
-#print(us_census.Income)
-
-#3
-split = us_census.GenderPop.str.split("_")
-#print(split)
-us_census['Men'] = split.str.get(0)
-us_census['Women'] = split.str.get(1)
-#print(us_census.head())
-
-#4
-us_census.Men = pd.to_numeric(
-  us_census.Men.replace(
-    '[M\,]',
-    '',
-    regex = True
-  ))
-#print(us_census.Men)
-
-us_census.Women = pd.to_numeric(
-  us_census.Women.replace(
-    '[F\,]',
-    '',
-    regex = True
-  ))
-print(us_census.Women)
+DATA_DIR = Path(__file__).parent / "data"
+RACE_COLUMNS = ["Hispanic", "White", "Black", "Native", "Asian", "Pacific"]
 
 
-#5
-#print(us_census[['State', 'Women']])
-us_census = us_census.fillna(
-  value = {
-    'Women': us_census.TotalPop - us_census.Men
-  }
-)
-#print(us_census[['State', 'Women']])
+def load_census():
+    files = sorted(DATA_DIR.glob("states*.csv"))
+    return pd.concat((pd.read_csv(f) for f in files), ignore_index=True)
 
-duplicates = us_census.duplicated(subset = ['State'])
-print(duplicates.value_counts())
-us_census = us_census.drop_duplicates()
 
-#6
-"""
-plt.scatter(us_census['Women'], us_census['Income'], color=['red','green'])
-plt.xlabel('Women')
-plt.ylabel('Income')
-plt.show()
-plt.cla() 
+def clean_census(us_census):
+    # "$43,296.36" -> 43296.36
+    us_census["Income"] = pd.to_numeric(
+        us_census.Income.replace(r"[\$,]", "", regex=True))
 
-"""
-#7
-us_census['Hispanic'] = pd.to_numeric(
-  us_census.Hispanic.str[:-1]
-)
-#print(us_census.Hispanic)
-us_census['White'] = pd.to_numeric(
-  us_census.White.str[:-1]
-)
-us_census['Black'] = pd.to_numeric(
-  us_census.Black.str[:-1]
-)
-us_census['Native'] = pd.to_numeric(
-  us_census.Native.str[:-1]
-)
-us_census['Asian'] = pd.to_numeric(
-  us_census.Asian.str[:-1]
-)
-us_census['Pacific'] = pd.to_numeric(
-  us_census.Pacific.str[:-1]
-)
-#print(us_census)
+    # "2341093M_2489527F" -> Men = 2341093, Women = 2489527
+    split = us_census.GenderPop.str.split("_")
+    us_census["Men"] = pd.to_numeric(split.str.get(0).str.replace("M", "", regex=False))
+    us_census["Women"] = pd.to_numeric(split.str.get(1).str.replace("F", "", regex=False))
 
-us_census = us_census.fillna(
-  value ={
-    'Hispanic': us_census.Hispanic.mean(),
-    'White': us_census.White.mean(),
-    'Black': us_census.Black.mean(),
-    'Native': us_census.Native.mean(),
-    'Asian': us_census.Asian.mean(),
-    'Pacific': us_census.Pacific.mean()
-  }
-)
-#print(us_census)
+    # Missing women counts can be recovered from the total population
+    us_census["Women"] = us_census.Women.fillna(us_census.TotalPop - us_census.Men)
 
-plt.hist(us_census['Hispanic'])
-plt.title('Hispanic')
-plt.show()
-plt.cla()
+    duplicates = us_census.duplicated(subset=["State"]).sum()
+    print(f"Duplicate state rows removed: {duplicates}")
+    us_census = us_census.drop_duplicates(subset=["State"])
 
-plt.hist(us_census['White'])
-plt.title('White')
-plt.show()
-plt.cla()
+    # "17.5%" -> 17.5, then impute gaps with the column mean
+    for column in RACE_COLUMNS:
+        us_census[column] = pd.to_numeric(us_census[column].str.rstrip("%"))
+        us_census[column] = us_census[column].fillna(us_census[column].mean())
 
-plt.hist(us_census['Black'])
-plt.title('Black')
-plt.show()
-plt.cla()
+    return us_census
 
-plt.hist(us_census['Native'])
-plt.title('Native')
-plt.show()
-plt.cla()
 
-plt.hist(us_census['Pacific'])
-plt.title('Pacific')
-plt.show()
-plt.cla()
+def plot(us_census):
+    plt.scatter(us_census.Women, us_census.Income)
+    plt.xlabel("Women")
+    plt.ylabel("Average income ($)")
+    plt.title("Female population vs average income by state")
+    plt.show()
 
-plt.hist(us_census['Asian'])
-plt.title('Asian')
-plt.show()
+    fig, axes = plt.subplots(2, 3, figsize=(12, 7))
+    for ax, column in zip(axes.flat, RACE_COLUMNS):
+        ax.hist(us_census[column], bins=15)
+        ax.set_title(f"{column} (% of population)")
+    fig.suptitle("Distribution of race/ethnicity share across states")
+    fig.tight_layout()
+    plt.show()
+
+
+def main():
+    us_census = clean_census(load_census())
+    print(us_census.head())
+    plot(us_census)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,49 +1,33 @@
-import codecademylib3_seaborn
+"""London weather - variance and standard deviation of temperature.
+
+How much does London's temperature vary over the year and within each month?
+
+Data: data/london_weather.csv with at least `month` and `TemperatureC`
+columns (hourly readings).
+"""
+from pathlib import Path
+
+import calendar
+
 import pandas as pd
-import numpy as np
-from weather_data import london_data
 
-#1.
-print(london_data.head())
+DATA = Path(__file__).parent / "data" / "london_weather.csv"
 
 
-#2
-print(len(london_data))
+def main():
+    london_data = pd.read_csv(DATA)
+    temperature = london_data.TemperatureC
+    print(f"Readings: {len(london_data)}")
+    print(f"Annual mean: {temperature.mean():.2f} °C, "
+          f"variance: {temperature.var(ddof=0):.2f}, std: {temperature.std(ddof=0):.2f}\n")
 
-#3
-temp_clmn = london_data.TemperatureC
-#print(temp_clmn)
+    monthly = (london_data.groupby("month").TemperatureC
+               .agg(mean="mean", std=lambda s: s.std(ddof=0))
+               .round(2))
+    monthly.index = [calendar.month_name[m] for m in monthly.index]
+    print("Monthly temperature (°C):")
+    print(monthly)
 
-avg_temp = np.mean(temp_clmn)
-print(avg_temp)
 
-
-temp_var = np.var(temp_clmn)
-#print(temp_var)
-
-temp_std = np.std(temp_clmn)
-print(temp_std)
-
-#8
-june = london_data.loc[
-  london_data["month"] == 6]["TemperatureC"]
-print(june)
-
-july = london_data.loc[london_data.month == 7].TemperatureC
-print(july)
-
-june_mean = np.mean(june)
-july_mean = np.mean(july)
-
-print(june_mean)
-print(july_mean)
-
-print(np.std(june))
-print(np.std(july))
-
-for i in range(1, 13):
-
-  month = london_data.loc[london_data.month == i
-  ].TemperatureC
-  print("The mean temperature in month " +str(i)+ " is " + str(np.mean(month)))
-  print("The standard Deviation of temperature in month " +str(i)+ " is "+ str(np.std(month))+"\n")
+if __name__ == "__main__":
+    main()

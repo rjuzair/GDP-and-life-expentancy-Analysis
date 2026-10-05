@@ -1,0 +1,9 @@
+numpy
+pandas
+matplotlib
+seaborn
+scipy
+scikit-learn
+jupyter
+dash>=2.9
+plotly

@@ -1,94 +1,73 @@
-import codecademylib3
-from sklearn.preprocessing import StandardScaler
+"""Startup transformation - where can a struggling startup cut costs?
+
+Visualises revenue and expense trends, breaks down expense categories,
+identifies the least productive employees, and explores commute times and
+the salary-productivity relationship.
+
+Data: data/financial_data.csv, data/expenses.csv, data/employees.csv
+"""
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
 import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
-# load in financial data
-financial_data = pd.read_csv('financial_data.csv')
-expense_overview = pd.read_csv("expenses.csv")
-employees = pd.read_csv("employees.csv")
-
-# code goes here
-print(financial_data.head()) 
-print(expense_overview.head())
-print(employees.head())
-
-month = financial_data.Month
-revenue = financial_data.Revenue
-expenses = financial_data.Expenses
+DATA_DIR = Path(__file__).parent / "data"
+SMALL_CATEGORY = 0.05
 
 
-plt.plot(month, revenue)
-plt.xlabel("Month")
-plt.ylabel("Amount ($)")
-plt.title("Revenue")
-plt.show()
+def main():
+    financial_data = pd.read_csv(DATA_DIR / "financial_data.csv")
+    expense_overview = pd.read_csv(DATA_DIR / "expenses.csv")
+    employees = pd.read_csv(DATA_DIR / "employees.csv")
 
-plt.clf()
-plt.plot(month, expenses)
-plt.xlabel("Month")
-plt.ylabel("Amount ($)")
-plt.title("Expenses")
-plt.show()
+    # Revenue vs expenses over time
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    ax1.plot(financial_data.Month, financial_data.Revenue)
+    ax1.set_title("Revenue")
+    ax2.plot(financial_data.Month, financial_data.Expenses, color="tab:red")
+    ax2.set_title("Expenses")
+    for ax in (ax1, ax2):
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Amount ($)")
+    plt.tight_layout()
+    plt.show()
 
-expense_categories = expense_overview.Expense
-proportions = expense_overview.Proportion
+    # Expense breakdown, grouping small categories into "Other"
+    expenses = expense_overview.copy()
+    expenses.loc[expenses.Proportion < SMALL_CATEGORY, "Expense"] = "Other"
+    expenses = expenses.groupby("Expense", as_index=False).Proportion.sum()
+    plt.pie(expenses.Proportion, labels=expenses.Expense, autopct="%0.0f%%")
+    plt.axis("equal")
+    plt.title("Expense categories")
+    plt.show()
 
-plt.clf()
-plt.pie(proportions, labels = expense_categories)
-plt.axis('Equal')
-plt.tight_layout()
-plt.show()
+    largest = expenses.sort_values("Proportion", ascending=False).Expense.iloc[0]
+    print(f"Largest expense category: {largest}")
 
-"""mask = expense_overview.isin(proportions[proportions < 0.05].index)
-expense_overview[mask] = 'other'
-print(expense_overview)"""
+    # Least productive 100 employees - candidates for restructuring
+    employees_cut = employees.sort_values("Productivity").head(100)
+    print(employees_cut.head())
 
-expense_categories = ['Salaries', 'Advertising', 'Office Rent', 'Other']
-proportions = [0.62, 0.15, 0.15, 0.08]
-plt.clf()
-plt.pie(proportions, labels = expense_categories)
-plt.title('Expense Categories')
-plt.axis('Equal')
-plt.tight_layout()
-plt.show()
+    # Commute times are right-skewed; a log transform makes them easier to read
+    commute_times = employees["Commute Time"]
+    print(commute_times.describe())
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+    ax1.hist(commute_times)
+    ax1.set_title("Commute time (minutes)")
+    ax2.hist(np.log(commute_times))
+    ax2.set_title("Log commute time")
+    plt.show()
 
-expense_cut = 'Salaries'
+    # Standardise salary and productivity to compare on a common scale
+    scaled = StandardScaler().fit_transform(employees[["Salary", "Productivity"]])
+    plt.scatter(scaled[:, 0], scaled[:, 1], alpha=0.5)
+    plt.xlabel("Salary (standardised)")
+    plt.ylabel("Productivity (standardised)")
+    plt.title("Salary vs productivity")
+    plt.show()
 
-sorted_data = employees.sort_values(by = ['Productivity'])
-#print(sorted_data)
 
-employees_cut = sorted_data.head(100)
-print(employees_cut)
-
-commute_times = employees['Commute Time']
-print(commute_times.describe())
-
-plt.clf()
-plt.hist(commute_times)
-plt.show()
-
-commute_times_log = np.log(commute_times)
-plt.clf
-plt.hist(commute_times_log)
-plt.show()
-
-#salaries = employees.Salary
-#productivity = employees.Productivity
-#print(salaries)
-n_produc = employees[['Productivity']].to_numpy()
-n_salry = employees[['Salary']].to_numpy()#print(n_employees)
-
-plt.clf
-plt.plot(employees.Salary, employees.Productivity)
-plt.show()
-
-scaler = StandardScaler()
-stand_salry = scaler.fit_transform(n_salry)
-stand_produc = scaler.fit_transform(n_produc)
-
-plt.clf()
-plt.plot(stand_salry, stand_produc)
-plt.show()
+if __name__ == "__main__":
+    main()
